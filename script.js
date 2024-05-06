@@ -27,23 +27,40 @@ function parsePIVData(data) {
 }
 
 function parseFascN(hex) {
+    // Convert hex to binary, considering LSB first
     const binary = hexToBinary(hex);
+    // This array should contain the correct lengths of each segment in bits, including parity bits
+    const segmentLengths = [5, 20, 5, 20, 5, 30, 5, 5, 5, 50, 5, 20, 5, 5, 5];
+    let currentIndex = 0;
+
     return {
-        "Agency Code": binaryToBCD(binary.substring(0, 32)), // 4 BCD digits
-        "System Code": binaryToBCD(binary.substring(32, 64)), // next 4 BCD digits
-        "Credential Number": binaryToBCD(binary.substring(64, 112)), // next 6 BCD digits
-        "Credential Series": binaryToBCD(binary.substring(112, 120)), // next 1 BCD digit
-        "Individual Credential Issue": binaryToBCD(binary.substring(120, 128)), // next 1 BCD digit
-        "Person Identifier": binaryToBCD(binary.substring(128, 228)), // next 10 BCD digits
-        "Organizational Category": binaryToBCD(binary.substring(228, 236)), // next 1 BCD digit
-        "Organizational Identifier": binaryToBCD(binary.substring(236, 268)), // next 4 BCD digits
-        "Affiliation": binaryToBCD(binary.substring(268, 276)) // next 1 BCD digit
+        "Agency Code": parseSegment(binary, currentIndex += segmentLengths[0], 4),
+        "System Code": parseSegment(binary, currentIndex += segmentLengths[1], 4),
+        "Credential Number": parseSegment(binary, currentIndex += segmentLengths[2], 6),
+        "Credential Series": parseSegment(binary, currentIndex += segmentLengths[3], 1),
+        "Individual Credential Issue": parseSegment(binary, currentIndex += segmentLengths[4], 1),
+        "Person Identifier": parseSegment(binary, currentIndex += segmentLengths[5], 10),
+        "Organizational Category": parseSegment(binary, currentIndex += segmentLengths[6], 1),
+        "Organizational Identifier": parseSegment(binary, currentIndex += segmentLengths[7], 4),
+        "Affiliation": parseSegment(binary, currentIndex += segmentLengths[8], 1)
     };
 }
 
 function hexToBinary(hex) {
-    return hex.split('').reduce((acc, h) => acc + parseInt(h, 16).toString(2).padStart(4, '0'), '');
+    return hex.split('').reduce((acc, h) => {
+        return parseInt(h, 16).toString(2).padStart(4, '0') + acc;
+    }, '');
 }
+
+function parseSegment(binary, start, length) {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        let byte = binary.substr(start + i * 5, 5); // 4 bits for the digit + 1 parity bit
+        result += parseInt(byte.substr(0, 4), 2).toString(); // Skip the parity bit for now
+    }
+    return result;
+}
+
 
 function binaryToBCD(binary) {
     let result = '';
